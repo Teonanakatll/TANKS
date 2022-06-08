@@ -2,8 +2,10 @@ from tkinter import *
 
 # Загрузка данных карты
 def getMap(lvl):
-    global dataMap
+    global dataMap, bulletMap
     print("Метод getMap()")
+
+    bulletMap = []
     dataMap = []
     tmp = []
 
@@ -18,9 +20,12 @@ def getMap(lvl):
             
         for i in range(len(tmp)):
             dataMap.append([])
-            for j in tmp[i]:
-                
+            bulletMap.append([])
+            for j in tmp[i]:                
                 dataMap[i].append(int(j))
+                bulletMap[i].append(0)
+                # bulletMap заполняем 0-ми чтоб потом отметить 1-ми только стены,
+                # вода и лес будут 0-ми для снаряда
     except:
         print("Ненайден файл с данными.")
         quit(0)
@@ -28,17 +33,14 @@ def getMap(lvl):
     
 
 # Залить фон
-def clear_setBG(x):
+def clear_setBG():
     print("Метод clear_setBG()")
     cnv.delete(ALL)
     for i in range(WIDTH_M):
         for j in range(HEIGHT):
             cnv.create_image(TILE // 2 + i * TILE,
                              TILE // 2 + j * TILE, image=img[0][2])
-    if (x == 1):
-        cnv.create_image((WIDTH_M // 2) * TILE, TILE, image=img[5][0])
-        cnv.create_image((WIDTH_M // 2) * TILE,
-                         (HEIGHT * TILE) - TILE, image=img[5][0])
+    
 
 # Создание обьектов Canvas и списков
 def createMap():
@@ -68,16 +70,17 @@ def createMap():
     for i in range(len(dataMap)):
         for j in range(len(dataMap[i])):
 
-            # Пусто, добавляем параметр проверки на лес
+            # Пусто, добавляем в dataMap параметр проверки на лес
             #if (dataMap[i][j] == 0):
-                #dataMap[i][j] = [0, 1]
+                #dataMap[i][j] = [0, 0]
                 
-            # Кирпич
+            # Кирпич, добавляем параметр проверки на сталь ("жизни" кирпича)
             if (dataMap[i][j] == 1):
+                #dataMap[i][j] == [1, 0]
                 wall.append([i, j, cnv.create_image(TILE // 2 + j * TILE,
                                                     TILE // 2 + i * TILE,
                                                     image=img[1][2])])
-            # Сталь
+            # Сталь, добавляем "жизни"
             elif (dataMap[i][j] == 3):
                 dataMap[i][j] = 1
                 wall.append([i, j, cnv.create_image(TILE // 2 + j * TILE,
@@ -432,17 +435,6 @@ def bulletAnime(v, count):
 
         # Включаем возможность выстрела
         shoo = False
-
-        
-        
-               
-               
-    
-    
-        
-            
-        
-        
         
     
 # ================================== ПОЛЕ ==========================================
@@ -480,6 +472,9 @@ bullSpeed = 8
 
 # Математическая модель карты
 dataMap = None
+
+# Карта для расчаёта полёта пули
+bulletMap = None
 
 # Карта леса
 forest = None
@@ -595,7 +590,7 @@ bull = PhotoImage(file="image/bull/bullet.png")
 
 
 
-clear_setBG(1)
+clear_setBG()
 
 createMap()
 
