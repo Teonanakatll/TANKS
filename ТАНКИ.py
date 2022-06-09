@@ -45,7 +45,7 @@ def clear_setBG():
 # Создание обьектов Canvas и списков
 def createMap():
     print("Метод createMap()")
-    global dataMap, forest, wall, players
+    global dataMap, bulletMap, forest, wall, players
 
     getMap(level)
     
@@ -71,36 +71,43 @@ def createMap():
         for j in range(len(dataMap[i])):
 
             # Пусто, добавляем в dataMap параметр проверки на лес
-            #if (dataMap[i][j] == 0):
-                #dataMap[i][j] = [0, 0]
+            if (dataMap[i][j] == 0):
+                dataMap[i][j] = [0, 0]
                 
             # Кирпич, добавляем параметр проверки на сталь ("жизни" кирпича)
             if (dataMap[i][j] == 1):
-                #dataMap[i][j] == [1, 0]
+                bulletMap[i][j] = 1
+                dataMap[i][j] = [1, 0]
+                # Список: Стены
                 wall.append([i, j, cnv.create_image(TILE // 2 + j * TILE,
                                                     TILE // 2 + i * TILE,
                                                     image=img[1][2])])
             # Сталь, добавляем "жизни"
             elif (dataMap[i][j] == 3):
                 dataMap[i][j] = 1
+                bulletMap[i][j] = 1
+                dataMap[i][j] = [1, 2]
+                # Список: Стены
                 wall.append([i, j, cnv.create_image(TILE // 2 + j * TILE,
                                                     TILE // 2 + i * TILE,
                                                     image=img[3][3])])
-            # Лес
+            # Лес : прорисовывается НАД ТАНКАМИ И СНАРЯЛАМИ !!!!
             elif (dataMap[i][j] == 2):
-                dataMap[i][j] = 0
+                dataMap[i][j] = [0, 1]
+                # Список: Лес
                 forest.append([i, j, cnv.create_image(TILE // 2 + j * TILE,
                                                       TILE // 2 + i * TILE,
                                                       image=img[2][0])])
             # Вода
             elif (dataMap[i][j] == 4):
-                dataMap[i][j] = 1
+                # Неуничтожаемое препятствие НО ПРОПУСКАЕТ СНАРЯДЫ !!!!
+                dataMap[i][j] = [1, 5]
                 cnv.create_image(TILE // 2 + j * TILE,
                                  TILE // 2 + i * TILE,
                                  image=img[4][2])
 
     
-    lookMap()
+    #lookMap()
                 
 # Вывод карты в консоль
 def lookMap():
@@ -135,13 +142,32 @@ def test():
                              image=img[1][3])
 
 # Метод перерисовывающий лес после перерисовки танка или выстрела
-def makeForest():
+# чтобы обьекты двигались под лесом
+def makeForest(x):
+    global inForest
     print("Метод makeForest()")
+    
     for i in range(len(forest)):
         x = forest[i][1]
         y = forest[i][0]
         cnv.delete(forest[i][2])
-        forest[i][2] = cnv.create_image(TILE // 2 + x * TILE, TILE // 2 + y * TILE, image=img[2][0])
+        forest[i][2] = cnv.create_image(TILE // 2 + x * TILE,
+                                        TILE // 2 + y * TILE, image=img[2][0])
+    if (x > 0):
+        inForest = True
+
+
+# Футкция принимает последовательность нажатия клавиш и возвращающает:
+# True, если направление танка меняется и False если нет
+def changeVector(v):
+    global keyList
+    keyList[0] = keyList[1]
+    keyList[1] = v
+
+    if (keyList[0] != keyList[1]):
+        return True
+    else:
+        return False
 # ========================= УПРАВЛЕНИЕ И ДВИЖЕНИЕ ==============================
 # Анимация танка
 def moveTankTo(x, y, count):
@@ -154,24 +180,39 @@ def moveTankTo(x, y, count):
         cnv.after(20, lambda x=x, y=y, c=count: moveTankTo(x, y, c))
     else:
         print("Метод moveTankTo() выполнился")
+
         moving = False
         
     
 # Движение танка
 def move(v):
-    global vector
-    print("Метод move(x)")
+    check0 = changeVector(v)
+    
+    global vector, inForest
+
+    x = players[0][0]
+    y = players[0][1]    
+
+    # Проверяем находится ли танк все ещё в лесу, если нет: inForest = False
+    if (inForest):
+        if (dataMap[x][y][1] + dataMap[x][y + 1][1] +
+            dataMap[x + 1][y][1] + dataMap[x + 1][y + 1][1] == 0):
+            inForest = False
+    
     if (moving):
         return 0
-    cnv.delete(players[0][2])
-    players[0][2] = cnv.create_image((players[0][1] * TILE) + TILE,
-                                     (players[0][0] * TILE) + TILE, image=img[6][v])
+    print("Метод move(x)")
 
-    # Перерисовываем лес
-    makeForest()
+    if (check0):
+        cnv.delete(players[0][2])   
+        players[0][2] = cnv.create_image((players[0][1] * TILE) + TILE,
+                                     (players[0][0] * TILE) + TILE, image=img[6][v])
     
-    x = players[0][0]
-    y = players[0][1]
+        if (inForest):
+            makeForest(1)
+    # Перерисовываем лес
+    #makeForest()
+    
 
     if (v == UPKEY):
         vector = UPKEY
@@ -208,24 +249,32 @@ def getNumber(x, y, v):
     print(x, y)
     
     if (v == UPKEY and x > 0):
-        if (sum(dataMap[x][y:y + 2]) == 0):
+        if ((dataMap[x][y][0] + dataMap[x][y + 1][0]) == 0):
+            if (dataMap[x][y][1] + dataMap[x][y][1] != 0):
+                makeForest(1)
             return 1
         else:
             return 0
     elif (v == DOWNKEY and x < 25):
-        if (sum(dataMap[x + 1][y:y + 2]) == 0):
+        if ((dataMap[x + 1][y][0] + dataMap[x + 1][y + 1][0]) == 0):
+            if (dataMap[x + 1][y][1] + dataMap[x + 1][y + 1][1] != 0):
+                makeForest(1)
             return 1
         else:
             return 0
     elif (v == LEFTKEY and y > 0):
         #print(f"data[x][y]: {dataMap[x][y]} data[x + 1][y]: {dataMap[x + 1][y]}")
-        if ((dataMap[x][y] + dataMap[x + 1][y]) == 0):
+        if ((dataMap[x][y][0] + dataMap[x + 1][y][0]) == 0):
+            if (dataMap[x][y][1] + dataMap[x + 1][y][1] != 0):
+                makeForest(1)
             return 1
         else:
             return 0
     elif (v == RIGHTKEY and y < 25):
         #print(f"data[x][y]: {dataMap[x][y]} data[x + 1][y]: {dataMap[x + 1][y]}") 
-        if ((dataMap[x][y + 1] + dataMap[x + 1][y + 1]) == 0):
+        if ((dataMap[x][y + 1][0] + dataMap[x + 1][y + 1][0]) == 0):
+            if (dataMap[x][y + 1][1] + dataMap[x + 1][y + 1][1] != 0):
+                makeForest(1)
             return 1
         else:
             return 0
@@ -301,7 +350,6 @@ def explodeAnime(x, y, a):
     
 # Анимация выстрела
 def shotAnime(x, y, n, a):
-    print("Метод shotAnime()")
     global sh  
     shoo = True
     cnv.delete(sh) 
@@ -327,21 +375,28 @@ def calculatBullet(x, y):
     # Координаты начала выстрела (нулевая точка для отсчёта места взрыва)
     xExp = x
     yExp = y
+
+    # Индикатор наличия леса на пути снаряда
+    l = False
     
     count = 0
     y -= 1
     if (vector == UPKEY):
-        while (sum(dataMap[x][y:y + 2]) == 0 and x > 0):
+        while (sum(bulletMap[x][y:y + 2]) == 0 and x > 0):
+            # Проверяем лес
+            if ((dataMap[x][y][1] or dataMap[x][y + 1][1]) == 1):
+                l = True
+                
             x -= 1
             count += 1
         count -= 1
         
         print()
         print()
-        print(x, y, dataMap[x][y])
+        print(x, y, bulletMap[x][y])
         print()
         print()
-        print(x, y + 1, dataMap[x][y + 1])
+        print(x, y + 1, bulletMap[x][y + 1])
         print()
         print()
         print(count)
@@ -349,7 +404,9 @@ def calculatBullet(x, y):
 
     elif (vector == DOWNKEY):
         
-        while (x < 25 and sum(dataMap[x][y:y + 2]) == 0):
+        while (x < 25 and sum(bulletMap[x][y:y + 2]) == 0):
+            if ((dataMap[x][y][1] or dataMap[x][y + 1][1]) == 1):
+                l = True
             x += 1
             count += 1
         
@@ -357,44 +414,51 @@ def calculatBullet(x, y):
             count += 1
         if (x <= 25):
             print()
-            print(x, y, dataMap[x][y])
+            print(x, y, bulletMap[x][y])
             print()
             print()
-            print(x, y + 1, dataMap[x][y + 1])
+            print(x, y + 1, bulletMap[x][y + 1])
             print()
             print()
             print(count)
 
         ex = cnv.create_image(yExp * TILE, (xExp + count) * TILE, image=explode[0])
     elif (vector == LEFTKEY and y > 0):
-        while (dataMap[x][y] + dataMap[x - 1][y] == 0):
+        while (bulletMap[x][y] + bulletMap[x - 1][y] == 0):
+            if ((dataMap[x][y][1] or dataMap[x - 1][y][1]) == 1):
+                l = True
             y -= 1
             count += 1
         print()
         print()
-        print(x, y, dataMap[x][y])
+        print(x, y, bulletMap[x][y])
         print()
         print()
-        print(x - 1, y, dataMap[x - 1][y])
+        print(x - 1, y, bulletMap[x - 1][y])
         print()
         print()
         print(count)
         ex = cnv.create_image((yExp - count) * TILE, xExp * TILE, image=explode[0])
     elif (vector == RIGHTKEY and y < 25):
-        while (dataMap[x][y] + dataMap[x - 1][y] == 0):
+        while (bulletMap[x][y] + bulletMap[x - 1][y] == 0):
+            if ((dataMap[x][y][1] or dataMap[x - 1][y][1]) == 1):
+                l == True
             y += 1
             count += 1
         count -= 1
         print()
         print()
-        print(x, y, dataMap[x][y])
+        print(x, y, bulletMap[x][y])
         print()
         print()
-        print(x - 1, y, dataMap[x - 1][y])
+        print(x - 1, y, bulletMap[x - 1][y])
         print()
         print()
         print(count)
         ex = cnv.create_image((yExp + count) * TILE, xExp * TILE, image=explode[0])
+
+    if (l):
+        makeForest(0)
 
     v = vector
     count *= 5
@@ -478,6 +542,12 @@ bulletMap = None
 
 # Карта леса
 forest = None
+
+# Танк в лесу?
+inForest = False
+
+# Список хранящий последовательность нажатий клавиш
+keyList = [5, 0]
 
 # Танки и орлы
 players = []
