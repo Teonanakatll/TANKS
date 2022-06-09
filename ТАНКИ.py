@@ -84,7 +84,6 @@ def createMap():
                                                     image=img[1][2])])
             # Сталь, добавляем "жизни"
             elif (dataMap[i][j] == 3):
-                dataMap[i][j] = 1
                 bulletMap[i][j] = 1
                 dataMap[i][j] = [1, 2]
                 # Список: Стены
@@ -248,7 +247,7 @@ def getNumber(x, y, v):
     print("Метод getNumber")
     print(x, y)
     
-    if (v == UPKEY and x > 0):
+    if (v == UPKEY and x >= 0):
         if ((dataMap[x][y][0] + dataMap[x][y + 1][0]) == 0):
             if (dataMap[x][y][1] + dataMap[x][y][1] != 0):
                 makeForest(1)
@@ -262,7 +261,7 @@ def getNumber(x, y, v):
             return 1
         else:
             return 0
-    elif (v == LEFTKEY and y > 0):
+    elif (v == LEFTKEY and y >= 0):
         #print(f"data[x][y]: {dataMap[x][y]} data[x + 1][y]: {dataMap[x + 1][y]}")
         if ((dataMap[x][y][0] + dataMap[x + 1][y][0]) == 0):
             if (dataMap[x][y][1] + dataMap[x + 1][y][1] != 0):
@@ -382,7 +381,7 @@ def calculatBullet(x, y):
     count = 0
     y -= 1
     if (vector == UPKEY):
-        while (sum(bulletMap[x][y:y + 2]) == 0 and x > 0):
+        while (sum(bulletMap[x][y:y + 2]) == 0 and x >= 0):
             # Проверяем лес
             if ((dataMap[x][y][1] or dataMap[x][y + 1][1]) == 1):
                 l = True
@@ -423,8 +422,8 @@ def calculatBullet(x, y):
             print(count)
 
         ex = cnv.create_image(yExp * TILE, (xExp + count) * TILE, image=explode[0])
-    elif (vector == LEFTKEY and y > 0):
-        while (bulletMap[x][y] + bulletMap[x - 1][y] == 0):
+    elif (vector == LEFTKEY):
+        while (y >= 0 and (bulletMap[x][y] + bulletMap[x - 1][y]) == 0):
             if ((dataMap[x][y][1] or dataMap[x - 1][y][1]) == 1):
                 l = True
             y -= 1
@@ -439,13 +438,13 @@ def calculatBullet(x, y):
         print()
         print(count)
         ex = cnv.create_image((yExp - count) * TILE, xExp * TILE, image=explode[0])
-    elif (vector == RIGHTKEY and y < 25):
-        while (bulletMap[x][y] + bulletMap[x - 1][y] == 0):
+    elif (vector == RIGHTKEY):
+        while (y < 25 and (bulletMap[x][y] + bulletMap[x - 1][y]) == 0):
             if ((dataMap[x][y][1] or dataMap[x - 1][y][1]) == 1):
                 l == True
             y += 1
             count += 1
-        count -= 1
+        
         print()
         print()
         print(x, y, bulletMap[x][y])
@@ -553,7 +552,7 @@ keyList = [5, 0]
 players = []
 
 # Уровень
-level = 1
+level = 2
 
 # Карта разрушаемых препятствий (кирпича и леса)
 wall = None
