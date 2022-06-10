@@ -77,19 +77,17 @@ def createMap():
             # Кирпич, добавляем параметр проверки на сталь ("жизни" кирпича)
             if (dataMap[i][j] == 1):
                 bulletMap[i][j] = 1
-                dataMap[i][j] = [1, 0]
+                dataMap[i][j] = [1, 0, cnv.create_image(TILE // 2 + j * TILE,
+                                                        TILE // 2 + i * TILE, image=img[1][2])] 
                 # Список: Стены
-                wall.append([i, j, cnv.create_image(TILE // 2 + j * TILE,
-                                                    TILE // 2 + i * TILE,
-                                                    image=img[1][2])])
+                #wall.append([i, j, cnv.create_image(TILE // 2 + j * TILE, TILE // 2 + i * TILE, image=img[1][2])])
             # Сталь, добавляем "жизни"
             elif (dataMap[i][j] == 3):
                 bulletMap[i][j] = 1
-                dataMap[i][j] = [1, 2]
+                dataMap[i][j] = [1, 2, cnv.create_image(TILE // 2 + j * TILE,
+                                                        TILE // 2 + i * TILE, image=img[3][2])]
                 # Список: Стены
-                wall.append([i, j, cnv.create_image(TILE // 2 + j * TILE,
-                                                    TILE // 2 + i * TILE,
-                                                    image=img[3][3])])
+                #wall.append([i, j, cnv.create_image(TILE // 2 + j * TILE, TILE // 2 + i * TILE, image=img[3][3])])
             # Лес : прорисовывается НАД ТАНКАМИ И СНАРЯЛАМИ !!!!
             elif (dataMap[i][j] == 2):
                 dataMap[i][j] = [0, 1]
@@ -105,7 +103,7 @@ def createMap():
                                  TILE // 2 + i * TILE,
                                  image=img[4][2])
 
-    
+    print(wall)
     #lookMap()
                 
 # Вывод карты в консоль
@@ -249,7 +247,7 @@ def getNumber(x, y, v):
     
     if (v == UPKEY and x >= 0):
         if ((dataMap[x][y][0] + dataMap[x][y + 1][0]) == 0):
-            if (dataMap[x][y][1] + dataMap[x][y][1] != 0):
+            if (dataMap[x][y][1] + dataMap[x][y + 1][1] != 0):
                 makeForest(1)
             return 1
         else:
@@ -271,8 +269,8 @@ def getNumber(x, y, v):
             return 0
     elif (v == RIGHTKEY and y < 25):
         #print(f"data[x][y]: {dataMap[x][y]} data[x + 1][y]: {dataMap[x + 1][y]}") 
-        if ((dataMap[x][y + 1][0] + dataMap[x + 1][y + 1][0]) == 0):
-            if (dataMap[x][y + 1][1] + dataMap[x + 1][y + 1][1] != 0):
+        if ((dataMap[x][y][0] + dataMap[x + 1][y + 1][0]) == 0):
+            if (dataMap[x][y][1] + dataMap[x + 1][y + 1][1] != 0):
                 makeForest(1)
             return 1
         else:
@@ -344,6 +342,7 @@ def explodeAnime(x, y, a):
         
         # Включаем клавишу выстрела
         cnv.bind("<space>", shot)
+        destroyWall(destroy)
     
     
     
@@ -368,6 +367,8 @@ def shotAnime(x, y, n, a):
 
 # Расчёт полёта снаряда
 def calculatBullet(x, y):
+    global destroy
+    
     print("Метод calculateBullet()")
     print(x, y)
 
@@ -400,17 +401,22 @@ def calculatBullet(x, y):
         print()
         print(count)
         ex = cnv.create_image(yExp * TILE, (xExp - count) * TILE, image=explode[0])
-
+        # Забиваем координаты в destroy список
+        destroy = [[x, y], [x, y + 1]]
+        
     elif (vector == DOWNKEY):
         
-        while (x < 25 and sum(bulletMap[x][y:y + 2]) == 0):
+        while (x < 25 and sum(bulletMap[x][y:y + 2]) == 0): 
+
             if ((dataMap[x][y][1] or dataMap[x][y + 1][1]) == 1):
                 l = True
+            
             x += 1
             count += 1
         
-        if (x == 25):
+        if (x == 25 and (bulletMap[x][y] and bulletMap[x][y]) == 0):   # Компенсируем низ карты
             count += 1
+            
         if (x <= 25):
             print()
             print(x, y, bulletMap[x][y])
@@ -422,6 +428,8 @@ def calculatBullet(x, y):
             print(count)
 
         ex = cnv.create_image(yExp * TILE, (xExp + count) * TILE, image=explode[0])
+        destroy = [[x, y], [x, y + 1]]
+
     elif (vector == LEFTKEY):
         while (y >= 0 and (bulletMap[x][y] + bulletMap[x - 1][y]) == 0):
             if ((dataMap[x][y][1] or dataMap[x - 1][y][1]) == 1):
@@ -437,14 +445,20 @@ def calculatBullet(x, y):
         print()
         print()
         print(count)
+        
         ex = cnv.create_image((yExp - count) * TILE, xExp * TILE, image=explode[0])
+        destroy = [[x, y], [x - 1, y]]
+
     elif (vector == RIGHTKEY):
         while (y < 25 and (bulletMap[x][y] + bulletMap[x - 1][y]) == 0):
             if ((dataMap[x][y][1] or dataMap[x - 1][y][1]) == 1):
                 l == True
             y += 1
             count += 1
+        count -= 1
         
+        if (y == 25 and (bulletMap[x][y] and bulletMap[x - 1][y]) == 0):      # Компенсируем правую сторону
+            count += 1
         print()
         print()
         print(x, y, bulletMap[x][y])
@@ -455,13 +469,19 @@ def calculatBullet(x, y):
         print()
         print(count)
         ex = cnv.create_image((yExp + count) * TILE, xExp * TILE, image=explode[0])
+        destroy = [[x, y], [x - 1, y]]
+        
 
-    if (l):
+
+    #print(destroy)
+    if (l):               # Если по траектории лес, перерисовываем
         makeForest(0)
 
     v = vector
     count *= 5
     bulletAnime(v, count)
+
+    
 
 # Анимация полёта снаряда
 def bulletAnime(v, count):
@@ -498,6 +518,48 @@ def bulletAnime(v, count):
 
         # Включаем возможность выстрела
         shoo = False
+
+# Метод разрушения стен
+def destroyWall(d):
+    global dataMap, bulletMap
+    x = d[0][0]
+    y = d[0][1]
+    x1 = d[1][0]
+    y1 = d[1][1]
+    if (x > 25):
+        x = 25
+    destroyCount(x, y)
+    destroyCount(x1, y1)
+        
+# Дестрой
+def destroyCount(x, y):
+    global dataMap, bulletMap
+    
+    if (dataMap[x][y][0] == 1):
+        if (dataMap[x][y][1] == 0):
+            cnv.delete(dataMap[x][y][2])
+            dataMap[x][y][0] = 0
+            bulletMap[x][y] = 0
+        elif (dataMap[x][y][1] == 2):
+            dataMap[x][y][1] -= 1
+            cnv.delete(dataMap[x][y][2])
+            dataMap[x][y][2] = cnv.create_image(TILE // 2 + y * TILE,
+                                                TILE // 2 + x * TILE, image=img[3][3])
+            
+            
+        elif (dataMap[x][y][1] == 1):
+            dataMap[x][y][1] = 0
+            cnv.delete(dataMap[x][y][2])
+            dataMap[x][y][2] = cnv.create_image(TILE // 2 + y * TILE,
+                                                TILE // 2 + x * TILE, image=img[1][2])
+                                                
+      
+   
+
+            
+    cnv.update()
+            
+    
         
     
 # ================================== ПОЛЕ ==========================================
@@ -524,7 +586,8 @@ cnv.place(x=0, y=0)
 cnv.focus_set()
 
 # =============================== ПЕРЕМЕННЫЕ ===================================
-
+# Карта для расчаёта полёта пули
+bulletMap = None
 
 # Анимация выстрела идёт?
 shoo = False
@@ -536,8 +599,8 @@ bullSpeed = 8
 # Математическая модель карты
 dataMap = None
 
-# Карта для расчаёта полёта пули
-bulletMap = None
+# Танки и орлы
+players = []
 
 # Карта леса
 forest = None
@@ -548,23 +611,24 @@ inForest = False
 # Список хранящий последовательность нажатий клавиш
 keyList = [5, 0]
 
-# Танки и орлы
-players = []
+# Карта разрушаемых стен (кирпича и стали)
+wall = None
+
+# Список с координатами 2-х тайлов попавших под взрыв
+destroy = [0, 0, 0, 0]
+
 
 # Уровень
 level = 2
-
-# Карта разрушаемых препятствий (кирпича и леса)
-wall = None
-
-# Танк едет?
-moving = False
 
 # коды клавиш
 UPKEY = 0
 DOWNKEY = 1
 LEFTKEY = 2
 RIGHTKEY = 3
+
+# Танк едет?
+moving = False
 
 # В какую сторону смотрит танк?
 vector = UPKEY
